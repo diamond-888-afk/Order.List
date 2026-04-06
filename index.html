@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ganesh • Premium Groceries</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', system_ui, sans-serif; }
+        .title-font { font-family: 'Playfair Display', serif; }
+        .sidebar-active {
+            background: linear-gradient(90deg, #166534, #4ade80);
+            color: white;
+            box-shadow: 0 10px 15px -3px rgb(16 185 129 / 0.3);
+        }
+        .product-card:hover {
+            transform: translateY(-12px);
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+        }
+        .main-category-btn.active {
+            background-color: #10b981;
+            color: white;
+        }
+        /* Animations and polish */
+        :root { --accent: #10b981; --muted: #79eb32; }
+        .fade-in { animation: fadeIn 420ms ease both; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none; } }
+
+        @keyframes cardEnter { from { opacity: 0; transform: translateY(18px) scale(0.995); } to { opacity:1; transform: none; } }
+        .card-animate { animation: cardEnter 420ms cubic-bezier(.2,.9,.3,1) both; }
+
+        @keyframes pillEnter { from { opacity: 0; transform: translateY(-8px) } to { opacity:1; transform:none } }
+
+        .cart-pulse { animation: cartPulse 520ms ease both; }
+        @keyframes cartPulse { 0% { transform: scale(1); } 40% { transform: scale(1.08); } 100% { transform: scale(1); } }
+
+        /* subtle UI tweaks */
+        #shop-name-input { padding: 6px 10px; border-radius: 12px; border: 1px solid rgba(16,185,129,0.08); background: rgba(16,185,129,0.03); }
+        .product-card { transition: transform 280ms ease, box-shadow 280ms ease; cursor: pointer; }
+        .main-category-btn { transition: transform 200ms ease, box-shadow 200ms ease; }
+        .main-category-btn:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(16,185,129,0.08); }
+        #sidebar-menu a { transition: background 180ms ease, transform 180ms ease; }
+        #sidebar-menu a:hover { transform: translateX(6px); }
+        .product-card.selected-product {
+            background: linear-gradient(180deg, rgba(16,185,129,0.14), rgba(16,185,129,0.08)) !important;
+            border-color: rgba(16,185,129,0.28) !important;
+            box-shadow: 0 20px 50px -10px rgba(16,185,129,0.22) !important;
+            transform: translateY(-6px) !important;
+            transition: background 240ms ease, box-shadow 240ms ease, transform 200ms ease;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-emerald-50 via-white to-amber-50">
+
+    <div class="flex min-h-screen">
+        
+        <!-- LEFT SIDEBAR -->
+        <div class="w-80 bg-gradient-to-b from-emerald-800 to-emerald-950 text-white h-screen sticky top-0 overflow-auto shadow-2xl">
+            <div class="p-8">
+                <div class="flex items-center gap-4 mb-16">
+                    <div class="w-14 h-14 bg-white rounded-3xl flex items-center justify-center text-4xl shadow-inner">🌾</div>
+                    <div>
+                        <h1 class="title-font text-4xl font-bold tracking-tight">Ganesh</h1>
+                        <p class="text-emerald-300 text-sm -mt-1">Premium Groceries</p>
+                    </div>
+                </div>
+
+                <div class="space-y-2" id="sidebar-menu"></div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="flex-1">
+            <!-- TOP PILLS -->
+            <div class="glass border-b sticky top-0 z-50 bg-white/80 backdrop-blur-md">
+                <div class="px-12 py-7 flex items-center gap-6">
+                    <div class="mr-auto flex items-center">
+                        <input id="shop-name-input" placeholder="Shop name (optional)" class="text-lg font-semibold text-emerald-700 placeholder:text-emerald-400 bg-transparent border-none focus:outline-none" />
+                    </div>
+                    <div class="flex items-center gap-6 overflow-x-auto" id="top-pills"></div>
+                </div>
+            </div>
+
+            <!-- MAIN AREA -->
+            <div class="p-12">
+                <div class="max-w-7xl mx-auto">
+                    <div class="flex items-end justify-between mb-10">
+                        <div>
+                            <p id="shop-name" class="text-sm text-emerald-500 mb-1 font-medium"></p>
+                            <h1 id="main-title" class="title-font text-6xl font-bold text-slate-900 tracking-tighter">Atta</h1>
+                            <p id="sub-title" class="text-emerald-600 text-xl mt-2">Whole Wheat Flour</p>
+                        </div>
+                        
+                        <button id="cart-btn" onclick="viewCart()" 
+                                class="flex items-center gap-4 bg-white shadow-xl border border-emerald-100 px-8 py-4 rounded-3xl hover:scale-105 transition-all">
+                            <span class="text-3xl">🛍️</span>
+                            <div>
+                                <p class="font-semibold text-lg">Your Cart</p>
+                                <p id="cart-count" class="text-emerald-600 font-medium">0 items</p>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div id="product-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CART SIDEBAR -->
+    <div id="cart-sidebar" class="hidden fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-[100] overflow-auto">
+        <div class="p-8">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold">Your Order</h2>
+                <button onclick="closeCart()" class="text-4xl text-slate-400 hover:text-slate-600">×</button>
+            </div>
+            <div id="cart-items" class="space-y-6 mb-12"></div>
+            <div class="space-y-4">
+                <button onclick="sendToWhatsApp()" class="w-full bg-[#25D366] hover:bg-[#20b557] text-white py-5 rounded-3xl font-semibold text-lg flex items-center justify-center gap-3">📱 Send via WhatsApp</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== ALL PRODUCTS BY CATEGORY ====================
+        const productsByCategory = {
+            "Atta": [
+                {id:1, name:"Premium Sharbati Atta", image:"image.html/img.5.jpg"},
+                {id:2, name:"Whole Wheat Chakki Atta", image:"image.html/img.3.jpg"},
+                {id:3, name:"Multigrain Atta", image:"image.html/img.6.jpg"},
+                {id:4, name:"Diabetes Control Atta", image:"image.html/img.4.jpg"},
+                {id:5, name:"Whole Wheat Desi Chakki Atta", image:"image.html/img.2.jpg"},
+                {id:6, name:"White Whole Wheat Chakki Atta", image:"image.html/img.1.jpg"}
+            ],
+            "Maida": [
+                {id:7, name:"Maida ", image:"image.html/img.38.jpg"},
+                {id:8, name:"Unbleached Maida", image:"image.html/img.70.jpg"}
+            ],
+            "Dalia": [
+                {id:9, name:"Wheat Dalia", image:"image.html/img.23.jpg"},
+                {id:10, name:"Bajra Dalia", image:"image.html/img.21.jpg"},
+                {id:11, name:"Multigrain Dalia", image:"image.html/img.37.jpg"},
+                {id:12, name:"Gold Premium Dalia", image:"image.html/img.22.jpg"},
+                {id:13, name:"Barley Dalia", image:"image.html/img.61.jpg"},
+                {id:14, name:"Corn Dalia", image:"image.html/img.78.jpg"},
+                {id:15, name:"Roasted Wheat Dalia", image:"image.html/img.24.jpg"}
+            ],
+            "Sattu": [
+                {id:16, name:"Chana Sattu", image:"image.html/img.68.jpg"},
+                {id:17, name:"Gold Shakti  Sattu", image:"image.html/img.32.jpg"},
+                {id:18, name:"Gold Shakti Multigrain Sattu", image:"image.html/img.63.jpg"},
+                {id:19, name:"Gold Sakti Sattu Jar", image:"image.html/img.36 .jpg"},
+                {id:20, name:"Gold Shakti Barley Sattu", image:"image.html/img.62.jpg"},
+                {id:21, name:"shakti Sweet Sattu", image:"image.html/img.12.jpg"},
+                {id:22, name:"Shakti Jaljeera Sattu", image:"image.html/img.67.jpg"}
+            ],
+            "Sooji": [
+                {id:23, name:"Double Roasted Sooji", image:"image.html/img.33.jpg"},
+                {id:24, name:"Fine Sooji (Mahin)", image:"image.html/img.89.jpg.webp"},
+                {id:25, name:"Sooji", image:"image.html/img.34.jpg"}
+            ],
+            "Besan": [
+                {id:26, name:"Chana Besan Superfine", image:"image.html/img.90.webp"},
+                {id:27, name:"Gold Matar Besan", image:"image.html/img.10.jpg"},
+                {id:28, name:"Chana Besan", image:"image.html/img.7.jpg"}
+            ],
+            "Millets": [
+                {id:29, name:"Rajgira Atta", image:"image.html/img.71.jpg"},
+                {id:30, name:"Bajri Atta", image:"image.html/img.75.jpg"},
+                {id:31, name:"Kuttu Atta", image:"image.html/img.73.jpg"},
+                {id:32, name:"Jowari Atta", image:"image.html/img.74.jpg"},
+                {id:33, name:"Ragi Atta", image:"image.html/img.72.jpg"},
+                {id:34, name:"Singhara Atta", image:"image.html/img.30.jpg"}
+            ],
+            // Spices with 3 sub-categories
+            
+            "Whole": [
+                {id:35, name:"Jeera Whole", image:"image.html/img.65.jpg"},
+                {id:36, name:"Ajwain Whole", image:"image.html/img.66.jpg"},
+                {id:37, name:"Saunf Whole", image:"image.html/img.77.jpg"},
+                {id:38, name:"Pila Sarson Whole", image:"image.html/img.76.jpg"},
+                {id:71, name:"Lal Sarson Whole", image:"image.html/img.79.jpg"},
+                {id:72, name:"Methi Whole", image:"image.html/img.13.jpg"},
+                {id:73, name:"Dhaniya Whole", image:"image.html/img.80.jpg"},
+                {id:74, name:"Rai Sarson Whole", image:"image.html/img.81.jpg"},
+                {id:75, name:"Kaala Jeera Whole", image:"image.html/img.82.jpg"},
+                {id:76, name:"Panch Phoron", image:"image.html/img.35.jpg"},
+                {id:77, name:"Posto (Poppy Seeds)", image:"image.html/img.83.jpg"},
+                {id:78, name:"Bay Leaf", image:"image.html/img.84.jpg"},
+                {id:79, name:"Kali Mirch Whole", image:"image.html/img.85.jpg"}
+            ],
+            "Powder": [
+                {id:39, name:"Haldi Powder", image:"image.html/img.51.jpg"},
+                {id:40, name:"Laal Mirch Powder", image:"image.html/img.52.jpg"},
+                {id:41, name:"Dhania Powder", image:"image.html/img.54.jpg"},
+                {id:42, name:"Jeera Powder", image:"image.html/img.55.jpg"},
+                {id:43, name:"Kali Mirch Powder", image:"image.html/img.53.jpg"},
+                {id:80, name:"Kashmiri Mirch Powder", image:"image.html/img.86.jpg"}
+            ],
+            "Blended": [
+                {id:44, name:"Meat Masala", image:"image.html/img.49.jpg"},
+                {id:45, name:"Biryani Masala", image:"image.html/img.15.jpg"},
+                {id:46, name:"Shahi Garam Masala", image:"image.html/img.20.jpg"},
+                {id:47, name:"Garam Masala Powder", image:"image.html/img.19.jpg"},
+                {id:48, name:"Fish Curry Masala", image:"image.html/img.18.jpg"},
+                {id:49, name:"Chicken Curry Masala", image:"image.html/img.87.jpg"},
+                {id:81, name:"Aloodum Masala", image:"image.html/img.11.jpg"},
+                {id:82, name:"Chana Masala", image:"image.html/img.17.jpg"}
+            ],
+            // Snacks with 4 sub-categories
+            "Snacks": [
+                {id:50, name:"Makai Mixture", image:"image.html/img.43.jpg"},
+                {id:51, name:"Jhaal Chanachur", image:"image.html/img.44.jpg"},
+                {id:52, name:"Aloo Bhujia", image:"image.html/img.45.jpg"},
+                {id:53, name:"Masala Peanuts", image:"image.html/img.46.jpg"},
+                {id:54, name:"Bikaneri Bhujia", image:"image.html/img.40.jpg"},
+                {id:55, name:"Diet Chiwda", image:"image.html/img.41.jpg"},
+                {id:83, name:"Moong Dal Bhaja", image:"image.html/img.64.jpg"},
+                {id:84, name:"Tok Jhal Misti Chanachur", image:"image.html/img.42.jpg"},
+                {id:85, name:"Khatta Meetha Chanachur", image:"image.html/img.47.jpg"},
+                {id:86, name:"Masala Chana Dal", image:"image.html/img.48.jpg"},
+                {id:87, name:"All in One Namkeen", image:"image.html/img.88.jpg"}
+            ],
+            // Pulses with 5 sub-categories
+            "Pulses": [
+                {id:56, name:"Sona Masoor Dal", image:"image.html/img.58.jpg"},
+                {id:57, name:"Masoor Dal Whole", image:"image.html/img.59.jpg"},
+                {id:58, name:"Sona Moong Dal", image:"image.html/img.57.jpg"},
+                {id:59, name:"Toor Dal", image:"image.html/img.56.jpg"},
+                {id:60, name:"Chana Dal", image:"image.html/img.60.jpg"},
+                {id:61, name:"Urad Dal Split", image:"image.html/img.50.jpg"}
+            ],
+            // Others with 6 sub-categories
+            "Instant": [
+                {id:62, name:"Khaman Dhokla", image:"image.html/img.27.jpg"},
+                {id:63, name:"Bela Kachori", image:"image.html/img.25.jpg"},
+                {id:64, name:"Hing Club Kachori", image:"image.html/img.26.jpg"},
+                {id:65, name:"Rice Idly", image:"image.html/img.29.jpg"}
+            ],
+            "Rice": [
+                {id:66, name:"Shyama Rice", image:"image.html/img.39.jpg"},
+                {id:67, name:"Kamini Rice", image:"image.html/img.69.jpg"}
+            ],
+            "Papad": [
+                {id:68, name:"Bikaneri Plain Papad", image:"image.html/img.31.jpg"},
+                {id:69, name:"Punjabi Masala Papad", image:"image.html/img.9.jpg"},
+                {id:70, name:"Bikaneri Masala Papad", image:"image.html/img.8.jpg"}
+            ]
+        }
+
+        let cart = []
+        let currentCategory = "Atta"
+        let isOthersMode = false
+        let currentSpiceSub = null
+
+        // Return a better image source: prefer local images in image.html by id when placeholder URLs are used
+        function getProductImage(p) {
+            if (!p || !p.image) return ''
+            const img = p.image + ''
+            // if image is an external placeholder, switch to local by id
+            if ((img.startsWith('http') && img.includes('m.media-amazon')) || img.includes('61dhydcedKL')) {
+                return `image.html/img.${p.id}.jpg`
+            }
+            return img
+        }
+
+        // Generate quantity options (10g .. 20 kg) with 500g selected by default
+        function getQtyOptionsHtml(defaultVal = '0.5') {
+            const opts = [
+                {v: '0.01', t: '10g'},
+                {v: '0.05', t: '50g'},
+                {v: '0.1', t: '100g'},
+                {v: '0.15', t: '150g'},
+                {v: '0.16', t: '160g'},
+                {v: '0.175', t: '175g'},
+                {v: '0.25', t: '250g'},
+                {v: '0.5', t: '500g'},
+                {v: '1', t: '1 kg'},
+                {v: '2', t: '2 kg'},
+                {v: '5', t: '5 kg'},
+                {v: '10', t: '10 kg'},
+                {v: '20', t: '20 kg'}
+            ]
+            return opts.map(o => `<option value="${o.v}" ${o.v===defaultVal? 'selected':''}>${o.t}</option>`).join('')
+        }
+
+        function getIcon(cat) {
+            const icons = {
+                "Atta":"🌾", "Maida":"🥨", "Dalia":"🌽", "Sattu":"🥛", "Sooji":"🍞",
+                "Besan":"🟨", "Millets":"🌱", "Instant":"⚡", "Rice":"🍚", "Papad":"🥟",
+                "Whole":"🌿", "Powder":"🌶️", "Blended":"🧂", "Snacks":"🥜", "Pulses":"🫘"
+            }
+            return icons[cat] || "🌾"
+        }
+
+        function renderSidebar() {
+            const menu = document.getElementById('sidebar-menu')
+            let html = ''
+
+            if (isOthersMode) {
+                if (currentCategory === "Spices") {
+                    ["Whole", "Powder", "Blended"].forEach(sub => {
+                        const active = sub === currentSpiceSub ? 'sidebar-active' : ''
+                        html += `<a href="#" onclick="switchSpiceSub('${sub}'); return false" class="${active} flex items-center gap-4 px-6 py-5 text-lg font-medium hover:bg-white/10 rounded-r-3xl transition-all">${getIcon(sub)} ${sub}</a>`
+                    })
+                } else {
+                    const cats = currentCategory === "Snacks" ? ["Snacks"] : currentCategory === "Pulses" ? ["Pulses"] : ["Instant", "Rice", "Papad"]
+                    cats.forEach(cat => {
+                        const active = cat === currentCategory ? 'sidebar-active' : ''
+                        html += `<a href="#" onclick="switchCategory('${cat}'); return false" class="${active} flex items-center gap-4 px-6 py-5 text-lg font-medium hover:bg-white/10 rounded-r-3xl transition-all">${getIcon(cat)} ${cat}</a>`
+                    })
+                }
+            } else {
+                ["Atta","Maida","Dalia","Sattu","Sooji","Besan","Millets"].forEach(cat => {
+                    const active = cat === currentCategory ? 'sidebar-active' : ''
+                    html += `<a href="#" onclick="switchCategory('${cat}'); return false" class="${active} flex items-center gap-4 px-6 py-5 text-lg font-medium hover:bg-white/10 rounded-r-3xl transition-all">${getIcon(cat)} ${cat}</a>`
+                })
+            }
+            menu.innerHTML = html
+        }
+
+        function switchCategory(cat) {
+            // Special-case Spices: switch to spice sub-categories (Whole/Powder/Blended)
+            if (cat === "Spices") {
+                currentCategory = "Spices"
+                isOthersMode = true
+                currentSpiceSub = "Whole"
+                switchSpiceSub("Whole")
+                return
+            }
+
+            currentCategory = cat
+            // 'Spices' is handled above; other others-mode categories listed here
+            isOthersMode = ["Instant","Rice","Papad","Snacks","Pulses"].includes(cat)
+            currentSpiceSub = null
+
+            document.getElementById('main-title').textContent = cat
+            document.getElementById('sub-title').textContent = getSubTitle(cat)
+            renderSidebar()
+            renderProducts(productsByCategory[cat] || [])
+        }
+
+        function switchSpiceSub(sub) {
+            currentSpiceSub = sub
+            document.getElementById('main-title').textContent = sub + " Spices"
+            document.getElementById('sub-title').textContent = ""
+            renderSidebar()
+            renderProducts(productsByCategory[sub] || [])
+        }
+
+        function getSubTitle(cat) {
+            const map = {
+                "Atta":"Whole Wheat Flour", "Maida":"Refined Wheat Flour", "Dalia":"Cracked Wheat",
+                "Sattu":"Roasted Gram Flour", "Sooji":"Semolina", "Besan":"Gram Flour",
+                "Millets":"Millet Flour", "Instant":"Instant Mix", "Rice":"Rice Varieties",
+                "Papad":"Traditional Papad", "Snacks":"Namkeen & Mixtures", "Pulses":"Dal & Lentils"
+            }
+            return map[cat] || ""
+        }
+
+        function renderProducts(products) {
+            const grid = document.getElementById('product-grid')
+            let html = ''
+            products.forEach(p => {
+                html += `
+                <div class="product-card bg-white rounded-3xl overflow-hidden border border-slate-100" onclick="selectProduct(event,this)">
+                    <div class="h-72 bg-gradient-to-br from-slate-50 to-white flex items-center justify-center p-8">
+                                <img src="${getProductImage(p)}" alt="${p.name}" class="max-h-full max-w-full object-contain drop-shadow-md">
+                    </div>
+                    <div class="p-6">
+                        <p class="font-semibold text-xl text-slate-800 mb-5">${p.name}</p>
+                        <div class="flex gap-3">
+                            <select id="qty-${p.id}" class="flex-1 border border-slate-200 rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-emerald-400">
+                                ${getQtyOptionsHtml()}
+                            </select>
+                            <input id="bags-${p.id}" type="number" min="1" value="1" class="w-24 border border-slate-200 rounded-2xl px-5 py-4 text-center focus:outline-none focus:border-emerald-400">
+                        </div>
+                        <button onclick="addToCart(${p.id})" class="mt-5 w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-4 rounded-3xl font-semibold text-base">ADD TO BAG</button>
+                    </div>
+                </div>`
+            })
+            grid.innerHTML = html
+            // animate product cards with a small stagger
+            const cards = grid.querySelectorAll('.product-card')
+            cards.forEach((c, i) => {
+                c.classList.add('card-animate')
+                c.style.animationDelay = (i * 80) + 'ms'
+            })
+        }
+
+        // Select a product card and highlight it. Ignore clicks originating from select/input controls.
+        function selectProduct(e, el) {
+            if (!el) return
+            // ignore clicks originating from interactive controls
+            if (e.target.closest && e.target.closest('button,select,input,a,label')) return
+            // clear previous selection
+            const prev = document.querySelector('.product-card.selected-product')
+            if (prev && prev !== el) prev.classList.remove('selected-product')
+            el.classList.add('selected-product')
+        }
+
+        function addToCart(id) {
+            const all = Object.values(productsByCategory).flat()
+            const product = all.find(p => p.id === id)
+            if (!product) return
+            const qtyEl = document.getElementById(`qty-${id}`)
+            const qty = parseFloat(qtyEl.value)
+            const qtyLabel = qtyEl.options[qtyEl.selectedIndex].text
+            const bags = parseInt(document.getElementById(`bags-${id}`).value) || 1
+
+            const productImage = getProductImage(product)
+            cart.push({ ...product, image: productImage, quantityKg: qty, quantityLabel: qtyLabel, bags })
+            updateCartCount()
+            // small cart pulse to indicate activity
+            animateCartPulse()
+            showToast(`✅ ${product.name} added`, '🛍️')
+        }
+
+        function animateCartPulse() {
+            const btn = document.getElementById('cart-btn')
+            if (!btn) return
+            btn.classList.add('cart-pulse')
+            setTimeout(() => btn.classList.remove('cart-pulse'), 700)
+        }
+
+        function updateCartCount() {
+            const totalBags = cart.reduce((s, it) => s + (parseInt(it.bags) || 0), 0)
+            document.getElementById('cart-count').textContent = `${cart.length} items • ${totalBags} bags`
+        }
+
+        function viewCart() {
+            if (cart.length === 0) return showToast("Cart is empty", "🛍️")
+            let html = ''
+            const totalBags = cart.reduce((s, it) => s + (parseInt(it.bags) || 0), 0)
+            cart.forEach((item, i) => {
+                html += `
+                <div class="flex gap-5 bg-slate-50 p-5 rounded-3xl">
+                    <img src="${item.image}" class="w-24 h-24 object-contain bg-white rounded-2xl">
+                    <div class="flex-1">
+                        <p class="font-semibold">${item.name}</p>
+                        <p class="text-sm text-slate-600">${item.quantityLabel} - ${item.bags} bag${item.bags>1?'s':''}</p>
+                        <button onclick="removeFromCart(${i})" class="text-red-500 text-sm mt-2">Remove</button>
+                    </div>
+                </div>`
+            })
+            // show total bags summary above items
+            const summary = `<div class="mb-4 text-sm text-slate-700 font-medium">Total bags: ${totalBags}</div>`
+            document.getElementById('cart-items').innerHTML = summary + html
+            document.getElementById('cart-sidebar').classList.remove('hidden')
+            document.getElementById('cart-sidebar').classList.add('flex')
+        }
+
+        function removeFromCart(i) {
+            cart.splice(i, 1)
+            updateCartCount()
+            viewCart()
+        }
+
+        function closeCart() {
+            document.getElementById('cart-sidebar').classList.add('hidden')
+            document.getElementById('cart-sidebar').classList.remove('flex')
+        }
+
+        function sendToWhatsApp() {
+            if (cart.length === 0) return
+            const shopName = (document.getElementById('shop-name-input') && document.getElementById('shop-name-input').value.trim()) || ''
+            let header = shopName ? `🌾 *${shopName} Order` : "🌾 *Order"
+            let msg = header + "\n\n"
+            cart.forEach(item => msg += `• ${item.name} — ${item.quantityLabel} - ${item.bags} bag${item.bags>1?'s':''}\n`)
+            const totalBags = cart.reduce((s,it) => s + (parseInt(it.bags) || 0), 0)
+            msg += `\nTotal bags: ${totalBags}`
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank')
+        }
+
+        
+
+        function showToast(msg, emoji) {
+            const t = document.createElement('div')
+            t.className = 'fixed bottom-8 right-8 bg-emerald-900 text-white px-8 py-4 rounded-3xl shadow-2xl flex items-center gap-3'
+            t.innerHTML = `${emoji} ${msg}`
+            document.body.appendChild(t)
+            setTimeout(() => t.remove(), 2800)
+        }
+
+        function renderTopPills() {
+            const cats = ["Grains", "Spices", "Snacks", "Pulses", "Others"]
+            let html = ''
+            cats.forEach(cat => {
+                html += `<button onclick="handleTopClick(this,'${cat}')" class="main-category-btn ${cat==='Grains'?'active':''} px-10 py-4 rounded-3xl text-base font-medium whitespace-nowrap transition-all">${cat}</button>`
+            })
+            document.getElementById('top-pills').innerHTML = html
+            // animate pills
+            const pills = document.querySelectorAll('.main-category-btn')
+            pills.forEach((p, i) => { p.style.animation = `pillEnter 360ms ease ${i*80}ms both` })
+        }
+
+        // Reflect shop-name input into header title
+        const shopInput = () => document.getElementById('shop-name-input')
+        function bindShopNameInput() {
+            const inp = shopInput()
+            if (!inp) return
+            inp.addEventListener('input', (e) => {
+                const v = e.target.value.trim()
+                document.getElementById('shop-name').textContent = v
+            })
+        }
+
+        function handleTopClick(btn, cat) {
+            document.querySelectorAll('.main-category-btn').forEach(b => b.classList.remove('active'))
+            btn.classList.add('active')
+
+            isOthersMode = ["Spices","Snacks","Pulses","Others"].includes(cat)
+
+            if (cat === "Grains") {
+                currentCategory = "Atta"
+                currentSpiceSub = null
+                document.getElementById('main-title').textContent = currentCategory
+                document.getElementById('sub-title').textContent = getSubTitle(currentCategory)
+                renderSidebar()
+                renderProducts(productsByCategory[currentCategory] || [])
+            } else if (cat === "Spices") {
+                currentCategory = "Spices"
+                currentSpiceSub = "Whole"
+                switchSpiceSub("Whole")
+            } else {
+                currentCategory = cat
+                currentSpiceSub = null
+                document.getElementById('main-title').textContent = currentCategory
+                document.getElementById('sub-title').textContent = getSubTitle(currentCategory)
+                renderSidebar()
+                renderProducts(productsByCategory[currentCategory] || [])
+            }
+        }
+
+        function initialize() {
+            renderTopPills()
+            renderSidebar()
+            renderProducts(productsByCategory["Atta"])
+            bindShopNameInput()
+        }
+
+        window.onload = initialize
+    </script>
+</body>
+</html>
